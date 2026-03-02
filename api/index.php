@@ -28,6 +28,37 @@ header('Content-Type: application/json; charset=utf-8');
 
 $action = $_REQUEST['action'] ?? '';
 
+// Endpoints públicos (não requerem sessão MK-Auth)
+if ($action === 'telegram_proxy') {
+    $body   = json_decode(file_get_contents('php://input'), true) ?? [];
+    $token  = trim($body['token']  ?? '');
+    $chatId = trim($body['chatId'] ?? '');
+    $text   = trim($body['text']   ?? '');
+    if (!$token || !$chatId || !$text) {
+        die(json_encode(['ok' => false, 'message' => 'Parâmetros inválidos.']));
+    }
+    $url  = "https://api.telegram.org/bot{$token}/sendMessage";
+    $data = json_encode(['chat_id' => $chatId, 'text' => $text, 'parse_mode' => 'HTML']);
+    $ch   = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $data,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_SSL_VERIFYPEER => false,
+    ]);
+    $res   = curl_exec($ch);
+    $error = curl_error($ch);
+    curl_close($ch);
+    if ($error) { die(json_encode(['ok' => false, 'message' => "Erro cURL: $error"])); }
+    $json = json_decode($res, true);
+    die(json_encode([
+        'ok'      => $json['ok'] ?? false,
+        'message' => ($json['ok'] ?? false) ? 'Mensagem enviada!' : ($json['description'] ?? 'Erro'),
+    ]));
+}
+
 switch ($action) {
     case 'test_db':       action_test_db();       break;
     case 'list_onus':     action_list_onus();     break;

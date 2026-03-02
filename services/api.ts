@@ -44,31 +44,19 @@ export function downloadBackup(): void {
 // ── Telegram ──────────────────────────────────────────────────────────────────
 export interface TelegramResult { ok: boolean; message: string; }
 
-// Chama API do Telegram DIRETAMENTE do frontend (sem passar pelo PHP)
-async function telegramFetch(token: string, method: string, body: object): Promise<TelegramResult> {
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    return {
-      ok: data.ok === true,
-      message: data.ok ? 'Mensagem enviada com sucesso!' : (data.description || 'Erro desconhecido'),
-    };
-  } catch (e: any) {
-    return { ok: false, message: 'Erro de conexão: ' + e.message };
-  }
+// Usa proxy PHP para enviar mensagens ao Telegram (evita bloqueio CORS/CSP)
+async function telegramProxy(token: string, chatId: string, text: string): Promise<TelegramResult> {
+  return apiFetch<TelegramResult>('telegram_proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, chatId, text }),
+  });
 }
 
 export async function testTelegram(token: string, chatId: string): Promise<TelegramResult> {
   const now = new Date().toLocaleString('pt-BR');
-  return telegramFetch(token, 'sendMessage', {
-    chat_id: chatId,
-    parse_mode: 'HTML',
-    text: `✅ <b>VSOL Manager Pro</b>\n━━━━━━━━━━━━━━━━\n🤖 Bot configurado com sucesso!\n🕐 ${now}\n━━━━━━━━━━━━━━━━\nVocê receberá alertas de sua rede GPON/EPON aqui.`,
-  });
+  const text = `✅ <b>VSOL Manager Pro</b>\n━━━━━━━━━━━━━━━━\n🤖 Bot configurado com sucesso!\n🕐 ${now}\n━━━━━━━━━━━━━━━━\nVocê receberá alertas de sua rede GPON/EPON aqui.`;
+  return telegramProxy(token, chatId, text);
 }
 
 export async function sendTelegramAlert(token: string, chatId: string, type: string = 'resumo', data: any = {}): Promise<TelegramResult> {
@@ -82,7 +70,7 @@ export async function sendTelegramAlert(token: string, chatId: string, type: str
     const status = (data.olts_offline || 0) === 0 ? '🟢 Rede estável' : '🔴 Atenção necessária';
     text = `📊 <b>RESUMO DIÁRIO — VSOL Manager</b>\n━━━━━━━━━━━━━━━━\n${status}\n\n📡 <b>OLTs:</b> ${data.olts_online || 0}/${data.olts_total || 0} online\n📶 <b>ONUs:</b> ${data.onus_online || 0}/${data.onus_total || 0} online\n━━━━━━━━━━━━━━━━\n🕐 ${now}`;
   }
-  return telegramFetch(token, 'sendMessage', { chat_id: chatId, parse_mode: 'HTML', text });
+  return telegramProxy(token, chatId, text);
 }
 
 // ── Google Maps ───────────────────────────────────────────────────────────────
