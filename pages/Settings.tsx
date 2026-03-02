@@ -104,7 +104,11 @@ export const Settings: React.FC = () => {
   const handleSendAlert = async () => {
     setTgSending(true);
     try {
-      const res = await sendTelegramAlert();
+      const res = await sendTelegramAlert(config.telegramToken, config.telegramChatId, 'resumo', {
+        timestamp: new Date().toLocaleString('pt-BR'),
+        olts_total: 0, olts_online: 0, olts_offline: 0,
+        onus_total: 0, onus_online: 0, offline_list: [],
+      });
       showToast(res.ok ? 'Alerta enviado!' : res.message, res.ok ? 'success' : 'error');
       LogStorage.add(res.ok ? 'success' : 'error', `Alerta Telegram: ${res.message}`);
       setLogs(LogStorage.getAll());

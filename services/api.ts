@@ -52,8 +52,12 @@ export async function testTelegram(token: string, chatId: string): Promise<Teleg
   });
 }
 
-export async function sendTelegramAlert(): Promise<TelegramResult> {
-  return apiFetch<TelegramResult>('send_telegram');
+export async function sendTelegramAlert(token: string, chatId: string, type: string = 'resumo', data: any = {}): Promise<TelegramResult> {
+  return apiFetch<TelegramResult>('send_telegram', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, chatId, type, data }),
+  });
 }
 
 // ── Google Maps ───────────────────────────────────────────────────────────────
