@@ -44,20 +44,45 @@ export function downloadBackup(): void {
 // ── Telegram ──────────────────────────────────────────────────────────────────
 export interface TelegramResult { ok: boolean; message: string; }
 
+// Chama API do Telegram DIRETAMENTE do frontend (sem passar pelo PHP)
+async function telegramFetch(token: string, method: string, body: object): Promise<TelegramResult> {
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    return {
+      ok: data.ok === true,
+      message: data.ok ? 'Mensagem enviada com sucesso!' : (data.description || 'Erro desconhecido'),
+    };
+  } catch (e: any) {
+    return { ok: false, message: 'Erro de conexão: ' + e.message };
+  }
+}
+
 export async function testTelegram(token: string, chatId: string): Promise<TelegramResult> {
-  return apiFetch<TelegramResult>('test_telegram', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, chatId }),
+  const now = new Date().toLocaleString('pt-BR');
+  return telegramFetch(token, 'sendMessage', {
+    chat_id: chatId,
+    parse_mode: 'HTML',
+    text: `✅ <b>VSOL Manager Pro</b>\n━━━━━━━━━━━━━━━━\n🤖 Bot configurado com sucesso!\n🕐 ${now}\n━━━━━━━━━━━━━━━━\nVocê receberá alertas de sua rede GPON/EPON aqui.`,
   });
 }
 
 export async function sendTelegramAlert(token: string, chatId: string, type: string = 'resumo', data: any = {}): Promise<TelegramResult> {
-  return apiFetch<TelegramResult>('send_telegram', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, chatId, type, data }),
-  });
+  const now = new Date().toLocaleString('pt-BR');
+  let text = '';
+  if (type === 'onu_offline') {
+    text = `🔴 <b>ALERTA: ONU/OLT OFFLINE</b>\n━━━━━━━━━━━━━━━━\n📡 OLTs offline: <b>${data.olts_offline || 0}</b>\n🕐 ${now}`;
+  } else if (type === 'sinal_critico') {
+    text = `⚠️ <b>ALERTA: SINAL CRÍTICO</b>\n━━━━━━━━━━━━━━━━\n📶 ONUs com sinal abaixo do limite\n📡 Total: <b>${data.onus_total || 0}</b>\n🕐 ${now}`;
+  } else {
+    const status = (data.olts_offline || 0) === 0 ? '🟢 Rede estável' : '🔴 Atenção necessária';
+    text = `📊 <b>RESUMO DIÁRIO — VSOL Manager</b>\n━━━━━━━━━━━━━━━━\n${status}\n\n📡 <b>OLTs:</b> ${data.olts_online || 0}/${data.olts_total || 0} online\n📶 <b>ONUs:</b> ${data.onus_online || 0}/${data.onus_total || 0} online\n━━━━━━━━━━━━━━━━\n🕐 ${now}`;
+  }
+  return telegramFetch(token, 'sendMessage', { chat_id: chatId, parse_mode: 'HTML', text });
 }
 
 // ── Google Maps ───────────────────────────────────────────────────────────────
