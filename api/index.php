@@ -278,6 +278,16 @@ function action_geocode(): void {
     $address = trim($body['address'] ?? '');
     $apiKey  = trim($body['apiKey']  ?? '');
 
+    // Se não veio no body, busca da config no banco
+    if (!$apiKey && defined('CONHOSTNAME')) {
+        $m = new mysqli(CONHOSTNAME, CONUSERNAME, CONPASSWRD, CONDATABASE);
+        if (!$m->connect_errno) {
+            $r = $m->query("SELECT key_google_maps FROM vsol_config LIMIT 1");
+            if ($r && $row = $r->fetch_assoc()) $apiKey = $row['key_google_maps'] ?? '';
+            $m->close();
+        }
+    }
+
     if (!$address || !$apiKey) {
         echo json_encode(['ok' => false, 'message' => 'Endereço e API Key são obrigatórios.']);
         return;
@@ -335,14 +345,15 @@ function action_maps_olts(): void {
     $r = $mysqli->query("SELECT * FROM vsol_olts WHERE ativo = 1");
     if ($r) while ($row = $r->fetch_assoc()) {
         $items[] = [
-            'type'   => 'olt',
-            'id'     => 'olt_' . $row['id'],
-            'name'   => $row['nome'],
-            'ip'     => $row['ip'],
-            'model'  => $row['modelo'],
-            'status' => 'online',
-            'lat'    => null,
-            'lng'    => null,
+            'type'    => 'olt',
+            'id'      => 'olt_' . $row['id'],
+            'name'    => $row['nome'],
+            'ip'      => $row['ip'],
+            'model'   => $row['modelo'],
+            'status'  => 'online',
+            'address' => $row['endereco'] ?? '',
+            'lat'     => isset($row['lat']) && $row['lat'] ? (float)$row['lat'] : null,
+            'lng'     => isset($row['lng']) && $row['lng'] ? (float)$row['lng'] : null,
         ];
     }
 

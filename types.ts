@@ -29,6 +29,9 @@ export interface OLT {
   snmpVersion?: 'v1' | 'v2c';
   notes?: string;
   lastSeen?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface ONU {

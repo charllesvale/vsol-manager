@@ -71,9 +71,17 @@ $mysqli->query("CREATE TABLE IF NOT EXISTS `vsol_olts` (
     `porta_ssh`  int(11)      NOT NULL DEFAULT 22,
     `modelo`     varchar(100) DEFAULT 'VSOL',
     `ativo`      tinyint(1)   NOT NULL DEFAULT 1,
+    `endereco`   varchar(255) DEFAULT '',
+    `lat`        decimal(10,7) DEFAULT NULL,
+    `lng`        decimal(10,7) DEFAULT NULL,
     `created_at` datetime     DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+
+// Adiciona colunas de mapa em instâncias antigas (sem erro se já existirem)
+@$mysqli->query("ALTER TABLE `vsol_olts` ADD COLUMN `endereco` varchar(255) DEFAULT '' AFTER `ativo`");
+@$mysqli->query("ALTER TABLE `vsol_olts` ADD COLUMN `lat` decimal(10,7) DEFAULT NULL AFTER `endereco`");
+@$mysqli->query("ALTER TABLE `vsol_olts` ADD COLUMN `lng` decimal(10,7) DEFAULT NULL AFTER `lat`");
 echo "OK - Tabela vsol_olts criada/verificada.\n";
 
 $mysqli->close();

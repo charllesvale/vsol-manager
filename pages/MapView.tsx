@@ -1,15 +1,21 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Map, RefreshCw, Layers, Wifi, WifiOff, Server, AlertTriangle, X } from 'lucide-react';
-import { getMapsData, geocodeAddress, MapsItem } from '../services/api';
-import { ConfigStorage } from '../services/storage';
+import { Map, RefreshCw, Wifi, Server, AlertTriangle, X, MapPin as MapPinIcon } from 'lucide-react';
+import { ConfigStorage, OltStorage } from '../services/storage';
 
-interface MapPin extends MapsItem { lat: number; lng: number; }
+interface MapPin {
+  id: string;
+  type: 'olt' | 'client';
+  name: string;
+  ip?: string;
+  model?: string;
+  status?: string;
+  address?: string;
+  lat: number;
+  lng: number;
+}
 
 declare global {
-  interface Window {
-    google: any;
-    initVsolMap: () => void;
-  }
+  interface Window { google: any; initVsolMap: () => void; }
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -30,18 +36,19 @@ export const MapView: React.FC = () => {
   const [filter,   setFilter]   = useState<'all' | 'olt' | 'client'>('all');
   const [selected, setSelected] = useState<MapPin | null>(null);
   const [stats,    setStats]    = useState({ olts: 0, clients: 0, geocoded: 0, failed: 0 });
+  const [progress, setProgress] = useState('');
 
   const config = ConfigStorage.get();
 
-  const initMap = useCallback((pins: MapPin[]) => {
+  const initMap = useCallback((pinsToShow: MapPin[]) => {
     if (!mapRef.current || !window.google) return;
-
-    const center = pins.length > 0
-      ? { lat: pins[0].lat, lng: pins[0].lng }
-      : { lat: -15.7801, lng: -47.9292 }; // Brasília como fallback
+    const valid = pinsToShow.filter(p => p.lat && p.lng);
+    const center = valid.length > 0
+      ? { lat: valid[0].lat, lng: valid[0].lng }
+      : { lat: -15.7801, lng: -47.9292 };
 
     googleMapRef.current = new window.google.maps.Map(mapRef.current, {
-      zoom: pins.length > 0 ? 12 : 4,
+      zoom: valid.length > 0 ? 13 : 4,
       center,
       mapTypeId: 'roadmap',
       styles: [
@@ -51,20 +58,17 @@ export const MapView: React.FC = () => {
     });
 
     infoWindowRef.current = new window.google.maps.InfoWindow();
-    renderMarkers(pins, filter);
+    renderMarkers(pinsToShow, filter);
   }, [filter]);
 
   const renderMarkers = useCallback((pinsToRender: MapPin[], currentFilter: string) => {
     markersRef.current.forEach(m => m.setMap(null));
     markersRef.current = [];
-
     const filtered = pinsToRender.filter(p =>
       currentFilter === 'all' ? true : p.type === currentFilter
     );
-
     filtered.forEach(pin => {
       if (!window.google || !googleMapRef.current) return;
-
       const color = pin.type === 'olt'
         ? (pin.status === 'online' ? STATUS_COLOR.online : STATUS_COLOR.offline)
         : STATUS_COLOR.client;
@@ -75,11 +79,11 @@ export const MapView: React.FC = () => {
         title: pin.name,
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
-          scale: pin.type === 'olt' ? 12 : 8,
+          scale: pin.type === 'olt' ? 14 : 9,
           fillColor: color,
-          fillOpacity: 0.9,
+          fillOpacity: 0.95,
           strokeColor: '#ffffff',
-          strokeWeight: 2,
+          strokeWeight: 2.5,
         },
       });
 
@@ -90,6 +94,7 @@ export const MapView: React.FC = () => {
                <b style="font-size:14px">🖥️ ${pin.name}</b><br/>
                <span style="color:#64748b;font-size:12px">IP: ${pin.ip}</span><br/>
                <span style="color:#64748b;font-size:12px">Modelo: ${pin.model}</span><br/>
+               <span style="color:#64748b;font-size:12px">📍 ${pin.address}</span><br/>
                <span style="color:${color};font-weight:bold;font-size:12px">● ${(pin.status ?? '').toUpperCase()}</span>
              </div>`
           : `<div style="font-family:sans-serif;padding:8px;min-width:200px">
@@ -99,11 +104,9 @@ export const MapView: React.FC = () => {
         infoWindowRef.current.setContent(content);
         infoWindowRef.current.open(googleMapRef.current, marker);
       });
-
       markersRef.current.push(marker);
     });
 
-    // Ajusta o zoom para mostrar todos os pins
     if (filtered.length > 1 && googleMapRef.current) {
       const bounds = new window.google.maps.LatLngBounds();
       filtered.forEach(p => bounds.extend({ lat: p.lat, lng: p.lng }));
@@ -111,58 +114,109 @@ export const MapView: React.FC = () => {
     }
   }, []);
 
+  const geocode = async (address: string, mapsKey: string): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      const res = await fetch(`/admin/addons/vsol-optimized/api/index.php?action=geocode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ address, apiKey: mapsKey }),
+      });
+      const data = await res.json();
+      if (data.ok && data.lat && data.lng) return { lat: data.lat, lng: data.lng };
+    } catch {}
+    return null;
+  };
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
+    setProgress('');
+
+    const mapsKey = config.googleMapsKey;
+    if (!mapsKey) {
+      setError('Configure a Google Maps API Key em Configurações → Operação & IA.');
+      setLoading(false);
+      return;
+    }
+
+    const geocoded: MapPin[] = [];
+    let failed = 0;
+    let olts = 0;
+
+    // Carrega OLTs do storage local
+    const oltList = OltStorage.getAll();
+    olts = oltList.length;
+
+    for (const olt of oltList) {
+      setProgress(`Geocodificando OLT ${olt.name}...`);
+      if (olt.address) {
+        const coords = await geocode(olt.address, mapsKey);
+        if (coords) {
+          geocoded.push({
+            id: olt.id, type: 'olt', name: olt.name,
+            ip: olt.ip, model: olt.model, status: olt.status,
+            address: olt.address, lat: coords.lat, lng: coords.lng,
+          });
+        } else { failed++; }
+      } else { failed++; }
+    }
+
+    // Carrega clientes do MK-Auth via API PHP
+    let clients = 0;
     try {
-      const data = await getMapsData();
-      if (!data.ok) { setError('Erro ao carregar dados.'); setLoading(false); return; }
-      if (!data.mapsKey) { setError('Configure a Google Maps Key em Configurações → Operação & IA.'); setLoading(false); return; }
-
-      // Geocodifica clientes sem coordenadas
-      const geocoded: MapPin[] = [];
-      let failed = 0;
-      let olts = 0, clients = 0;
-
-      for (const item of data.items) {
-        if (item.type === 'olt') {
-          olts++;
-          // OLTs: tenta geocodificar pelo IP (não tem endereço)
-          // Usa posição aleatória próxima ao centro até ter endereço real
-          geocoded.push({ ...item, lat: item.lat ?? 0, lng: item.lng ?? 0 } as MapPin);
-        } else {
-          clients++;
+      const res = await fetch('/admin/addons/vsol-optimized/api/index.php?action=maps_olts', {
+        credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (data.ok && data.items) {
+        const clientItems = data.items.filter((i: any) => i.type === 'client');
+        clients = clientItems.length;
+        let count = 0;
+        for (const item of clientItems) {
+          count++;
+          if (count % 5 === 0) setProgress(`Geocodificando cliente ${count}/${clients}...`);
           if (item.address) {
-            try {
-              const geo = await geocodeAddress(item.address);
-              if (geo.ok && geo.lat && geo.lng) {
-                geocoded.push({ ...item, lat: geo.lat, lng: geo.lng } as MapPin);
-              } else { failed++; }
-            } catch { failed++; }
+            const coords = await geocode(item.address, mapsKey);
+            if (coords) {
+              geocoded.push({
+                id: item.id, type: 'client', name: item.name,
+                address: item.address, lat: coords.lat, lng: coords.lng,
+              });
+            } else { failed++; }
           }
         }
       }
+    } catch {}
 
-      // Filtra só quem tem coordenadas válidas
-      const valid = geocoded.filter(p => p.lat !== 0 && p.lng !== 0);
-      setPins(valid);
-      setStats({ olts, clients, geocoded: valid.length, failed });
+    setProgress('');
+    setPins(geocoded);
+    setStats({ olts, clients, geocoded: geocoded.length, failed });
 
-      // Carrega script do Google Maps se ainda não carregou
+    const loadMap = (pins: MapPin[]) => {
       if (!window.google) {
-        window.initVsolMap = () => initMap(valid);
+        window.initVsolMap = () => initMap(pins);
+        // Remove script antigo se existir
+        const old = document.getElementById('vsol-gmaps');
+        if (old) old.remove();
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${data.mapsKey}&callback=initVsolMap&language=pt-BR`;
+        script.id = 'vsol-gmaps';
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsKey}&callback=initVsolMap&language=pt-BR`;
         script.async = true;
         document.head.appendChild(script);
       } else {
-        initMap(valid);
+        initMap(pins);
       }
-    } catch (e: any) {
-      setError('Erro ao conectar com a API: ' + e.message);
+    };
+
+    if (geocoded.length === 0) {
+      setError('Nenhuma OLT com endereço cadastrado. Adicione o endereço nas OLTs em "Gerenciar OLTs".');
+    } else {
+      loadMap(geocoded);
     }
+
     setLoading(false);
-  }, [initMap]);
+  }, [config.googleMapsKey, initMap]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -215,7 +269,7 @@ export const MapView: React.FC = () => {
 
       {/* Erro */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm flex items-center gap-2">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-700 text-sm flex items-center gap-2">
           <AlertTriangle size={16} /> {error}
         </div>
       )}
@@ -225,11 +279,11 @@ export const MapView: React.FC = () => {
         {loading ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
             <RefreshCw className="animate-spin w-8 h-8" />
-            <p className="text-sm">Carregando mapa e geocodificando endereços...</p>
+            <p className="text-sm">{progress || 'Carregando mapa...'}</p>
           </div>
-        ) : error ? (
+        ) : error && pins.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
-            <Map className="w-12 h-12 text-slate-300" />
+            <MapPinIcon className="w-12 h-12 text-slate-300" />
             <p className="text-sm text-center max-w-xs">{error}</p>
           </div>
         ) : (

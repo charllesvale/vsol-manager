@@ -88,11 +88,11 @@ export interface MapsItem {
   lng: number | null;
 }
 
-export async function geocodeAddress(address: string): Promise<GeocodeResult> {
+export async function geocodeAddress(address: string, apiKey?: string): Promise<GeocodeResult> {
   return apiFetch<GeocodeResult>('geocode', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ address }),
+    body: JSON.stringify({ address, apiKey }),
   });
 }
 

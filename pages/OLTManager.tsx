@@ -25,7 +25,10 @@ const DEFAULT_FORM: Partial<OLT> = {
   snmpWrite: 'private',
   snmpPort: 161,
   snmpVersion: 'v2c',
-  notes: ''
+  notes: '',
+  address: '',
+  lat: undefined,
+  lng: undefined,
 };
 
 export const OLTManager: React.FC = () => {
@@ -529,12 +532,26 @@ export const OLTManager: React.FC = () => {
                   </div>
 
                   <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      📍 Endereço (para o Mapa da Rede)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.address || ''}
+                      onChange={e => setFormData({...formData, address: e.target.value})}
+                      className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="Ex: Rua das Flores, 123, Bairro, Cidade - UF"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">Informe o endereço para aparecer no mapa. A localização será convertida automaticamente.</p>
+                  </div>
+
+                  <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Observações</label>
                     <textarea
                       value={formData.notes || ''}
                       onChange={e => setFormData({...formData, notes: e.target.value})}
                       className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none"
-                      placeholder="Localização, observações técnicas, etc..."
+                      placeholder="Observações técnicas..."
                     ></textarea>
                   </div>
                 </div>
