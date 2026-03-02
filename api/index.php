@@ -4,19 +4,23 @@
  * Padrão ONU ISP: addons.class.php + $_SESSION['MKA_Logado']
  */
 
+// ob_start evita que addons.inc.hhvm envie HTML de redirect
+ob_start();
 if (file_exists(dirname(__FILE__) . '/../addons.class.php')) {
     include(dirname(__FILE__) . '/../addons.class.php');
 } elseif (file_exists('/opt/mk-auth/include/addons.inc.hhvm')) {
     include('/opt/mk-auth/include/addons.inc.hhvm');
 }
+ob_end_clean();
 
 if (session_status() === PHP_SESSION_NONE) {
     session_name('mka');
-    if (!isset($_SESSION)) session_start();
+    session_start();
 }
 
 if (!isset($_SESSION['MKA_Logado'])) {
     http_response_code(401);
+    header('Content-Type: application/json');
     die(json_encode(['erro' => true, 'log' => 'acesso negado']));
 }
 

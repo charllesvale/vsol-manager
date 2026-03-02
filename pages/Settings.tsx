@@ -92,8 +92,10 @@ export const Settings: React.FC = () => {
     setTgResult(null);
     try {
       const res = await testTelegram(config.telegramToken, config.telegramChatId);
-      setTgResult({ ok: res.ok, msg: res.message });
-      LogStorage.add(res.ok ? 'success' : 'error', `Teste Telegram: ${res.message}`);
+      console.log('Telegram test response:', res);
+      const msg = res.message || res.description || (res.ok ? 'Enviado!' : 'Erro desconhecido');
+      setTgResult({ ok: res.ok, msg });
+      LogStorage.add(res.ok ? 'success' : 'error', `Teste Telegram: ${msg}`);
       setLogs(LogStorage.getAll());
     } catch (e: any) {
       setTgResult({ ok: false, msg: 'Erro: ' + e.message });
@@ -110,7 +112,8 @@ export const Settings: React.FC = () => {
         onus_total: 0, onus_online: 0, offline_list: [],
       });
       showToast(res.ok ? 'Alerta enviado!' : res.message, res.ok ? 'success' : 'error');
-      LogStorage.add(res.ok ? 'success' : 'error', `Alerta Telegram: ${res.message}`);
+      const alertMsg = res.message || res.description || (res.ok ? 'Enviado!' : 'Erro desconhecido');
+      LogStorage.add(res.ok ? 'success' : 'error', `Alerta Telegram: ${alertMsg}`);
       setLogs(LogStorage.getAll());
     } catch (e: any) {
       showToast('Erro ao enviar alerta.', 'error');
