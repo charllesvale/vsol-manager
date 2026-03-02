@@ -130,22 +130,27 @@ export const Settings: React.FC = () => {
     showToast('Copiado!');
   };
 
-  const jsSnippet = `var addon_url = window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port: '') + "/admin/";
-add_menu.provedor('{"plink": "' + addon_url + 'addons/vsol-optimized/index.php", "ptext": "VSOL Manager Pro"}');`;
+  const jsSnippet = "// Copiar para: /opt/mk-auth/admin/addons/addon_vsol.js\n$('.navbar-start').append('<div class=\"navbar-item has-dropdown is-hoverable\"><a class=\"navbar-link is-size-7 has-text-weight-bold\">VSOL Manager</a><div class=\"navbar-dropdown\"><a href=\"/admin/addons/vsol-optimized/index.php\" class=\"navbar-item\">Dashboard</a></div></div>');";
 
-  const installCmds = `# 1. Enviar para o servidor
-scp -r vsol-optimized/ root@IP_SERVIDOR:/opt/mk-auth/admin/addons/
+  const installCmds = `# 1. Enviar para o servidor via SCP
+scp vsol-optimized.zip root@IP_SERVIDOR:/opt/mk-auth/admin/addons/
 
 # 2. No servidor via SSH
-cd /opt/mk-auth/admin/addons/vsol-optimized
+cd /opt/mk-auth/admin/addons/
+unzip vsol-optimized.zip && cd vsol-optimized
+
+# 3. Instalar dependências e compilar (apenas 1x)
 npm install && npm run build
 
-# 3. Renomear HTML para PHP (MK-Auth serve PHP)
-mv dist/index.html dist/index.php
-
-# 4. Copiar build e ajustar permissões
+# 4. Preparar para MK-Auth (substitui index.html pelo index.php com auth)
+rm -f dist/index.html
+cp index.php dist/index.php
+mkdir -p dist/api && cp api/index.php dist/api/
 cp -r dist/* .
-chown -R www-data:www-data .`;
+
+# 5. Permissões e registrar menu
+chown -R www-data:www-data .
+cp addon_vsol.js /opt/mk-auth/admin/addons/`;
 
   const tabs: { id: TabId; label: string; icon: React.ComponentType<any> }[] = [
     { id: 'install',  label: 'Instalação',    icon: FolderOpen },

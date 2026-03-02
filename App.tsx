@@ -4,16 +4,14 @@ import { Dashboard } from './pages/Dashboard';
 import { Diagnostics } from './pages/Diagnostics';
 import { Settings } from './pages/Settings';
 import { OLTManager } from './pages/OLTManager';
-import { ONUList } from './pages/ONUList';
 
-type PageId = 'dashboard' | 'olts' | 'onus' | 'diagnostics' | 'settings';
+type PageId = 'dashboard' | 'olts' | 'diagnostics' | 'settings';
 
 const PAGE_META: Record<PageId, { title: string; sub: string }> = {
-  dashboard:   { title: 'Visão Geral',            sub: 'Monitoramento em tempo real da planta óptica.' },
-  olts:        { title: 'Gerenciamento de OLTs',  sub: 'Cadastre e gerencie seus concentradores VSOL, Huawei, ZTE e Intelbras.' },
-  onus:        { title: 'ONUs / ONTs',             sub: 'Lista completa de ONUs cadastradas com status de sinal em tempo real.' },
-  diagnostics: { title: 'Diagnóstico de Sinal',   sub: 'Análise técnica local de sinal óptico GPON/EPON. Funciona 100% offline.' },
-  settings:    { title: 'Sistema & Instalação',   sub: 'Configure banco de dados, operação, alertas e visualize logs.' },
+  dashboard:   { title: 'Visão Geral',           sub: 'Monitoramento em tempo real da planta óptica.' },
+  olts:        { title: 'Gerenciamento de OLTs', sub: 'Cadastre e gerencie seus concentradores VSOL, Huawei, ZTE e Intelbras.' },
+  diagnostics: { title: 'Diagnóstico de Sinal',  sub: 'Análise técnica local de sinal óptico GPON/EPON. Funciona 100% offline.' },
+  settings:    { title: 'Sistema & Instalação',  sub: 'Configure o addon, banco de dados e visualize logs de atividade.' },
 };
 
 const App: React.FC = () => {
@@ -24,7 +22,6 @@ const App: React.FC = () => {
     switch (page) {
       case 'dashboard':   return <Dashboard />;
       case 'olts':        return <OLTManager />;
-      case 'onus':        return <ONUList />;
       case 'diagnostics': return <Diagnostics />;
       case 'settings':    return <Settings />;
       default:            return <Dashboard />;

@@ -1,238 +1,121 @@
 <?php
 /**
  * VSOL Manager Pro - API Backend
- * Endpoints PHP que o frontend React chama via fetch().
- * Todos os endpoints exigem sessão válida do MK-Auth.
+ * Padrão ONU ISP: include addons.class.php (symlink) + $_SESSION['MKA_Logado']
  */
 
-session_start();
-header('Content-Type: application/json; charset=utf-8');
-header('X-Content-Type-Options: nosniff');
-
-// ── Proteção de acesso ────────────────────────────────────────────────────────
-if (!isset($_SESSION['admin_login']) || empty($_SESSION['admin_login'])) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Não autorizado. Faça login no MK-Auth.']);
-    exit;
+// Symlink criado pelo instalador — igual ONU ISP
+if (file_exists(dirname(__FILE__) . '/../addons.class.php')) {
+    include(dirname(__FILE__) . '/../addons.class.php');
+} elseif (file_exists('/opt/mk-auth/include/addons.inc.hhvm')) {
+    include('/opt/mk-auth/include/addons.inc.hhvm');
+} else {
+    die(json_encode(['erro' => true, 'log' => 'addons.class.php não encontrado. Execute o instalador.']));
 }
 
-// ── Roteamento ────────────────────────────────────────────────────────────────
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
+// Sessão
+if (session_status() === PHP_SESSION_NONE) {
+    session_name('mka');
+    if (!isset($_SESSION)) session_start();
+}
+
+// Verifica login (chamada AJAX) — igual ONU ISP
+if (!isset($_SESSION['MKA_Logado'])) {
+    http_response_code(401);
+    die(json_encode(['erro' => true, 'log' => 'acesso negado, entre novamente em sua conta mkauth!']));
+}
+
+header('Content-Type: application/json; charset=utf-8');
+
+$action = $_REQUEST['action'] ?? '';
 
 switch ($action) {
-    case 'test_db':       action_test_db();       break;
-    case 'list_onus':     action_list_onus();     break;
-    case 'backup':        action_backup();        break;
-    case 'ping_host':     action_ping_host();     break;
+    case 'test_db':     action_test_db();     break;
+    case 'list_onus':   action_list_onus();   break;
+    case 'ping_host':   action_ping_host();   break;
+    case 'save_config': action_save_config(); break;
+    case 'backup':      action_backup();      break;
     default:
         http_response_code(400);
         echo json_encode(['error' => "Ação desconhecida: $action"]);
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function get_config(): array {
-    $config_file = __DIR__ . '/../vsol_config.json';
-    if (file_exists($config_file)) {
-        $data = json_decode(file_get_contents($config_file), true);
-        return $data ?? [];
-    }
-    return [];
-}
-
-function db_connect(array $cfg): mysqli|false {
-    $host = $cfg['mkAuthIp'] ?? '172.31.255.2';
-    $user = $cfg['dbUser']   ?? 'root';
-    $pass = $cfg['dbPass']   ?? 'vertrigo';
-    $db   = $cfg['dbName']   ?? 'mk_auth';
-
-    mysqli_report(MYSQLI_REPORT_OFF);
-    $conn = @new mysqli($host, $user, $pass, $db, 3306);
-    if ($conn->connect_errno) {
-        return false;
-    }
-    $conn->set_charset('utf8');
-    return $conn;
-}
-
-// ── Actions ───────────────────────────────────────────────────────────────────
-
-/**
- * POST action=test_db
- * Testa conexão com o banco de dados MySQL do MK-Auth.
- */
 function action_test_db(): void {
     $body = json_decode(file_get_contents('php://input'), true) ?? [];
-    $cfg  = get_config();
-
-    $host = $body['mkAuthIp'] ?? $cfg['mkAuthIp'] ?? '172.31.255.2';
-    $user = $body['dbUser']   ?? $cfg['dbUser']   ?? 'root';
-    $pass = $body['dbPass']   ?? $cfg['dbPass']   ?? 'vertrigo';
-    $db   = $body['dbName']   ?? $cfg['dbName']   ?? 'mk_auth';
+    $host = $body['mkAuthIp'] ?? (defined('CONHOSTNAME') ? CONHOSTNAME : '127.0.0.1');
+    $user = $body['dbUser']   ?? (defined('CONUSERNAME') ? CONUSERNAME : 'root');
+    $pass = $body['dbPass']   ?? (defined('CONPASSWRD')  ? CONPASSWRD  : 'vertrigo');
+    $db   = $body['dbName']   ?? (defined('CONDATABASE') ? CONDATABASE : 'mkradius');
 
     mysqli_report(MYSQLI_REPORT_OFF);
     $conn = @new mysqli($host, $user, $pass, $db, 3306);
-
     if ($conn->connect_errno) {
-        echo json_encode([
-            'ok'      => false,
-            'message' => 'Falha na conexão: ' . $conn->connect_error,
-            'errno'   => $conn->connect_errno,
-        ]);
+        echo json_encode(['ok' => false, 'message' => 'Falha: ' . $conn->connect_error]);
         return;
     }
-
-    // Tenta ler versão do MySQL para confirmar acesso real
-    $result  = $conn->query("SELECT VERSION() as v, DATABASE() as d");
-    $row     = $result ? $result->fetch_assoc() : null;
-    $version = $row['v'] ?? 'N/A';
-    $dbname  = $row['d'] ?? $db;
+    $res  = $conn->query("SELECT VERSION() as v, DATABASE() as d");
+    $row  = $res ? $res->fetch_assoc() : [];
     $conn->close();
-
-    echo json_encode([
-        'ok'      => true,
-        'message' => "Conexão bem-sucedida! MySQL $version — Banco: $dbname",
-        'version' => $version,
-        'dbname'  => $dbname,
-    ]);
+    echo json_encode(['ok' => true, 'message' => "Conexão OK! MySQL {$row['v']} — Banco: {$row['d']}", 'version' => $row['v'] ?? '', 'dbname' => $row['d'] ?? '']);
 }
 
-/**
- * GET action=list_onus
- * Lista todas as ONUs registradas no banco do MK-Auth (tabela onus ou similar).
- * Adapte a query conforme o schema real do MK-Auth / ONU ISP addon.
- */
 function action_list_onus(): void {
-    $cfg  = get_config();
-    $conn = db_connect($cfg);
-
-    if (!$conn) {
-        // Sem conexão: retorna lista vazia com aviso
-        echo json_encode([
-            'ok'      => false,
-            'message' => 'Banco não configurado ou inacessível. Configure em Configurações → Banco de Dados.',
-            'onus'    => [],
-        ]);
+    if (!defined('CONHOSTNAME')) {
+        echo json_encode(['ok' => false, 'onus' => [], 'total' => 0, 'message' => 'addons.class.php não carregado. Execute o instalador.']);
         return;
     }
-
-    // Verifica quais tabelas existem (compatibilidade com diferentes versões)
-    $tables = [];
-    $res = $conn->query("SHOW TABLES");
-    while ($row = $res->fetch_row()) $tables[] = $row[0];
-
+    $mysqli = new mysqli(CONHOSTNAME, CONUSERNAME, CONPASSWRD, CONDATABASE);
+    if ($mysqli->connect_errno) {
+        echo json_encode(['ok' => false, 'onus' => [], 'total' => 0, 'message' => 'Erro DB: ' . $mysqli->connect_error]);
+        return;
+    }
     $onus = [];
-
-    // ONU ISP addon usa tabela 'onus' com colunas específicas
-    if (in_array('onus', $tables)) {
-        $sql = "SELECT
-                    o.id,
-                    o.sn        AS serialNumber,
-                    o.descricao AS name,
-                    o.olt_id    AS oltId,
-                    o.pon       AS ponPort,
-                    o.rx        AS signalRx,
-                    o.tx        AS signalTx,
-                    o.status,
-                    o.ip,
-                    o.vlan,
-                    o.marca     AS brand,
-                    o.modelo    AS model,
-                    o.updated_at
-                FROM onus o
-                ORDER BY o.status ASC, o.rx DESC
-                LIMIT 2000";
-        $res = $conn->query($sql);
-        if ($res) {
-            while ($row = $res->fetch_assoc()) {
-                $onus[] = [
-                    'id'           => $row['id'],
-                    'serialNumber' => $row['serialNumber'] ?? '',
-                    'name'         => $row['name'] ?? '',
-                    'oltId'        => $row['oltId'] ?? '',
-                    'ponPort'      => (int)($row['ponPort'] ?? 0),
-                    'signalRx'     => (float)($row['signalRx'] ?? 0),
-                    'signalTx'     => (float)($row['signalTx'] ?? 0),
-                    'status'       => $row['status'] ?? 'offline',
-                    'ip'           => $row['ip'] ?? '',
-                    'vlan'         => (int)($row['vlan'] ?? 0),
-                    'brand'        => $row['brand'] ?? '',
-                    'model'        => $row['model'] ?? '',
-                    'updatedAt'    => $row['updated_at'] ?? '',
-                ];
-            }
-        }
-    } elseif (in_array('onu', $tables)) {
-        // Fallback: tabela alternativa
-        $sql = "SELECT * FROM onu ORDER BY id DESC LIMIT 2000";
-        $res = $conn->query($sql);
-        if ($res) {
-            while ($row = $res->fetch_assoc()) {
-                $onus[] = $row;
-            }
+    $res = $mysqli->query("SHOW TABLES LIKE 'onuisp_onus'");
+    if ($res && $res->num_rows > 0) {
+        $r = $mysqli->query("SELECT * FROM `onuisp_onus` ORDER BY rx DESC LIMIT 5000");
+        if ($r) while ($row = $r->fetch_assoc()) {
+            $onus[] = [
+                'id'           => $row['id'],
+                'serialNumber' => $row['sn'] ?? '',
+                'name'         => $row['descricao'] ?? '',
+                'oltId'        => $row['id_olts'] ?? '',
+                'ponPort'      => (int)($row['id_pons'] ?? 0),
+                'signalRx'     => (float)($row['rx'] ?? 0),
+                'signalTx'     => (float)($row['tx'] ?? 0),
+                'status'       => $row['status_onu'] ?? 'offline',
+                'ip'           => $row['ip'] ?? '',
+                'updatedAt'    => $row['updated_at'] ?? '',
+            ];
         }
     }
-
-    $conn->close();
-    echo json_encode([
-        'ok'     => true,
-        'onus'   => $onus,
-        'total'  => count($onus),
-        'tables' => $tables, // para debug
-    ]);
+    echo json_encode(['ok' => true, 'onus' => $onus, 'total' => count($onus)]);
 }
 
-/**
- * GET action=ping_host&ip=X.X.X.X
- * Faz ping no servidor para testar conectividade com a OLT.
- */
 function action_ping_host(): void {
     $ip = $_GET['ip'] ?? '';
-
-    // Valida IP
-    if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-        echo json_encode(['ok' => false, 'message' => 'IP inválido.']);
-        return;
-    }
-
-    // Executa ping com timeout de 2 segundos, 3 pacotes
-    $cmd    = "ping -c 3 -W 2 " . escapeshellarg($ip) . " 2>&1";
-    $output = shell_exec($cmd);
-
-    $ok = strpos($output ?? '', '0% packet loss') !== false ||
-          strpos($output ?? '', '0 received') === false && strpos($output ?? '', 'bytes from') !== false;
-
-    // Extrai latência média
-    preg_match('/rtt[^=]+=\s*([\d.]+)\/([\d.]+)\/([\d.]+)/', $output ?? '', $m);
-    $latency = isset($m[2]) ? $m[2] . ' ms' : 'N/A';
-
-    echo json_encode([
-        'ok'      => $ok,
-        'message' => $ok ? "Host $ip acessível. Latência: $latency" : "Host $ip não respondeu ao ping.",
-        'latency' => $latency,
-        'raw'     => $output,
-    ]);
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) { echo json_encode(['ok' => false, 'message' => 'IP inválido.']); return; }
+    $out = shell_exec("ping -c 3 -W 2 " . escapeshellarg($ip) . " 2>&1");
+    $ok  = strpos($out ?? '', '0% packet loss') !== false;
+    preg_match('/rtt[^=]+=\s*([\d.]+)\/([\d.]+)/', $out ?? '', $m);
+    $lat = isset($m[2]) ? $m[2] . ' ms' : 'N/A';
+    echo json_encode(['ok' => $ok, 'message' => $ok ? "Host $ip acessível. Latência: $lat" : "Host $ip não respondeu.", 'latency' => $lat]);
 }
 
-/**
- * GET action=backup
- * Gera um arquivo ZIP com todos os dados do addon (configs + storage) para download.
- */
+function action_save_config(): void {
+    $body    = json_decode(file_get_contents('php://input'), true) ?? [];
+    $file    = __DIR__ . '/../vsol_config.json';
+    $existing = file_exists($file) ? (json_decode(file_get_contents($file), true) ?? []) : [];
+    file_put_contents($file, json_encode(array_merge($existing, $body), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    echo json_encode(['ok' => true, 'message' => 'Configurações salvas.']);
+}
+
 function action_backup(): void {
-    $timestamp  = date('Y-m-d_H-i-s');
-    $filename   = "vsol-backup-$timestamp.json";
-
-    $backup = [
-        'version'    => '2.0',
-        'generated'  => date('c'),
-        'generated_by' => $_SESSION['admin_login'] ?? 'unknown',
-        'config'     => get_config(),
-        'note'       => 'Backup gerado pelo VSOL Manager Pro. Importe nas configurações para restaurar.',
-    ];
-
+    $file   = __DIR__ . '/../vsol_config.json';
+    $config = file_exists($file) ? (json_decode(file_get_contents($file), true) ?? []) : [];
+    $ts     = date('Y-m-d_H-i-s');
     header('Content-Type: application/json');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Content-Disposition: attachment; filename="vsol-backup-' . $ts . '.json"');
     header('Cache-Control: no-cache');
-    echo json_encode($backup, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    echo json_encode(['version' => '2.0', 'generated' => date('c'), 'config' => $config], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     exit;
 }

@@ -1,227 +1,122 @@
-# VSOL Manager Pro v2.0
+<div align="center">
 
-> Addon para o sistema **MK-Auth** voltado ao gerenciamento de OLTs e ONUs em redes GPON/EPON.  
-> 100% independente de serviços externos — sem IA, sem Gemini, sem dependência de internet para funcionar.
+# VSOL Manager Pro
+### Addon para MK-Auth — Gerenciamento de OLTs GPON/EPON
 
-![TypeScript](https://img.shields.io/badge/TypeScript-93%25-blue?style=flat-square&logo=typescript)
-![PHP](https://img.shields.io/badge/PHP-Backend-777BB4?style=flat-square&logo=php)
-![MK-Auth](https://img.shields.io/badge/MK--Auth-Addon-orange?style=flat-square)
-![Vite](https://img.shields.io/badge/Build-Vite-646CFF?style=flat-square&logo=vite)
+![MK-Auth](https://img.shields.io/badge/MK--Auth-23.05%2B-blue)
+![PHP](https://img.shields.io/badge/PHP-7.3%2B-purple)
+![React](https://img.shields.io/badge/React-19-61DAFB)
+![Tailwind](https://img.shields.io/badge/Tailwind-3.4-38BDF8)
+![License](https://img.shields.io/badge/license-MIT-green)
 
----
-
-## Paginas
-
-| Pagina | Descricao |
-|---|---|
-| **Dashboard** | Visao geral com total de OLTs, ONUs online/offline e logs recentes |
-| **Gerenciar OLTs** | Cadastro, edicao e remocao de OLTs com teste de conectividade (ping via PHP) |
-| **ONUs / ONTs** | Lista completa de ONUs com status de sinal, cards de contagem, filtros e paginacao |
-| **Diagnostico de Sinal** | Analise tecnica local de RX/TX/distancia baseada no padrao GPON ITU-T G.984 |
-| **Configuracoes** | Banco de dados, parametros de operacao, alertas Telegram, backup e logs |
+</div>
 
 ---
 
-## Controle de Acesso
+## 📋 Sobre
 
-O arquivo `index.php` verifica a sessao do MK-Auth antes de servir o app.
-Qualquer acesso sem login e redirecionado automaticamente para `/admin/login.php`.
+Addon para MK-Auth que permite gerenciar OLTs VSOL, Huawei, ZTE e Intelbras diretamente no painel administrativo. Interface React moderna com visual isolado do CSS do MK-Auth via iframe.
 
-```php
-// Verifica $_SESSION['admin_login'] definida pelo MK-Auth
-if (!isset($_SESSION['admin_login']) || empty($_SESSION['admin_login'])) {
-    header('Location: /admin/login.php');
-    exit;
-}
-```
+## ✨ Funcionalidades
 
----
+- **Dashboard** — visão geral de ONUs, sinal e status das OLTs
+- **Gerenciar OLTs** — cadastro, edição e remoção de OLTs com teste de conectividade
+- **Diagnóstico de Sinal** — análise local GPON/EPON baseada nos padrões ITU-T G.984, 100% offline
+- **Configurações** — banco de dados, operação e logs de atividade
 
-## Estrutura de Arquivos
+## 📦 Instalação
 
-```
-vsol-optimized/
-├── index.php               <- Entry point com guard de autenticacao MK-Auth
-├── index.html              <- Entry point HTML (apenas para desenvolvimento local)
-├── index.tsx               <- Entry point React
-├── App.tsx                 <- Roteamento principal
-├── types.ts                <- Interfaces e enums TypeScript
-├── vite.config.ts          <- Configuracao do build
-├── package.json
-├── api/
-│   └── index.php           <- API backend (test_db, list_onus, ping_host, backup)
-├── components/
-│   ├── Navbar.tsx          <- Barra de navegacao responsiva
-│   └── SignalChart.tsx     <- Grafico de sinal das OLTs
-├── pages/
-│   ├── Dashboard.tsx       <- Visao geral e estatisticas
-│   ├── OLTManager.tsx      <- CRUD de OLTs com teste de ping
-│   ├── ONUList.tsx         <- Listagem de ONUs com filtros e paginacao
-│   ├── Diagnostics.tsx     <- Diagnostico de sinal optico (100% offline)
-│   └── Settings.tsx        <- Configuracoes completas do sistema
-└── services/
-    ├── api.ts              <- Cliente HTTP para a API PHP
-    └── storage.ts          <- Persistencia localStorage com fallback em memoria
-```
+### Requisitos
+- MK-Auth 23.05 ou superior
+- PHP 7.3+
+- Node.js 18+
 
----
-
-## Instalacao no Servidor MK-Auth
-
-### 1. Clonar ou enviar os arquivos
+### Passo a passo
 
 ```bash
-# Via Git
+# 1. Clonar o repositório dentro dos addons do MK-Auth
 cd /opt/mk-auth/admin/addons/
 git clone https://github.com/charllesvale/vsol-manager vsol-optimized
+cd vsol-optimized
 
-# Ou via SCP (do seu computador)
-scp -r vsol-optimized/ root@IP_DO_SERVIDOR:/opt/mk-auth/admin/addons/
+# 2. Rodar o instalador (faz tudo automaticamente)
+bash instalar.sh
 ```
 
-### 2. Compilar no servidor via SSH
+O `instalar.sh` realiza automaticamente:
+- Instalação das dependências PHP (`php-snmp`, `php-curl`, `zip`)
+- Instalação do Node.js se necessário
+- `npm install` + `npm run build`
+- Criação do symlink `addons.class.php → addons.inc.hhvm` (padrão MK-Auth)
+- Registro do menu em `/opt/mk-auth/admin/addons/addon_vsol.js`
+- Criação das tabelas no banco de dados via `instalar.php`
+- Ajuste de permissões `www-data`
+
+### Acesso
+```
+http://SEU-SERVIDOR/admin/addons/vsol-optimized/index.php
+```
+> Limpe o cache do navegador (`Ctrl+Shift+R`) se o menu não aparecer.
+
+## 🔄 Atualização
 
 ```bash
 cd /opt/mk-auth/admin/addons/vsol-optimized
-
-npm install
-npm run build
-
-# MK-Auth serve PHP — renomear o index gerado
-mv dist/index.html dist/index.php
-
-# Copiar build para raiz do addon e ajustar permissoes
-cp -r dist/* .
-chown -R www-data:www-data .
+git pull
+bash instalar.sh
 ```
 
-### 3. Registrar no menu do MK-Auth
+## 🗂️ Estrutura
 
-Edite `/opt/mk-auth/admin/addons/addon.js` e adicione:
-
-```js
-var addon_url = window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port: '') + "/admin/";
-add_menu.provedor('{"plink": "' + addon_url + 'addons/vsol-optimized/index.php", "ptext": "VSOL Manager Pro"}');
+```
+vsol-optimized/
+├── index.php          # Entry point com auth MK-Auth (session mka / MKA_Logado)
+├── app.php            # App React isolado via iframe (sem conflito com Bulma)
+├── api/index.php      # API backend PHP
+├── instalar.php       # Cria tabelas no banco via CLI
+├── instalar.sh        # Instalador completo (padrão ONU ISP)
+├── deploy.sh          # Build rápido para atualizações
+├── addon_vsol.js      # Registra menu no navbar do MK-Auth
+├── App.tsx            # Roteamento principal React
+├── index.tsx          # Entry point React
+├── index.css          # Tailwind CSS
+├── tailwind.config.js
+├── postcss.config.js
+├── vite.config.ts
+├── components/
+│   ├── Navbar.tsx
+│   └── SignalChart.tsx
+├── pages/
+│   ├── Dashboard.tsx
+│   ├── OLTManager.tsx
+│   ├── Diagnostics.tsx
+│   └── Settings.tsx
+└── services/
+    ├── api.ts
+    └── storage.ts
 ```
 
-### 4. Limpar cache do navegador
+## ⚙️ Como funciona a autenticação
 
-Pressione `Ctrl + Shift + R` — o menu **VSOL Manager Pro** aparecera no painel do MK-Auth.
+Segue o mesmo padrão do addon **ONU ISP**:
 
----
+```php
+// Symlink criado pelo instalar.sh (igual ONU ISP)
+ln -sf /opt/mk-auth/include/addons.inc.hhvm addons.class.php
 
-## Configuracao Inicial
+include(dirname(__FILE__) . '/addons.class.php'); // carrega constantes MK-Auth
+session_name('mka');                              // nome de sessão do MK-Auth
+if (!isset($_SESSION['MKA_Logado'])) { ... }     // verifica login
+```
 
-Acesse **Configuracoes > Banco de Dados** e preencha:
+## 🗄️ Tabelas criadas
 
-| Campo | Padrao | Descricao |
-|---|---|---|
-| IP do Servidor | `172.31.255.2` | IP interno do MK-Auth |
-| Banco de Dados | `mk_auth` | Nome do banco MySQL |
-| Usuario MySQL | `root` | Usuario do banco |
-| Senha MySQL | `vertrigo` | Senha do banco |
+| Tabela | Descrição |
+|--------|-----------|
+| `vsol_config` | Configurações do addon |
+| `vsol_logs` | Log de atividades |
+| `vsol_olts` | OLTs cadastradas |
 
-Clique em **Testar Conexao** para validar com o MySQL antes de salvar.
+## 📄 Licença
 
----
-
-## Parametros de Operacao
-
-Acesse **Configuracoes > Operacao**:
-
-| Parametro | Padrao | Descricao |
-|---|---|---|
-| Registros por Pagina | `30` | Paginacao na listagem de ONUs |
-| Registros por Cron | `50` | ONUs processadas por execucao do Cron |
-| Tempo Check ONU Cron | `A cada 12 horas` | Frequencia de verificacao automatica |
-| SSH Timeout | `10` | Timeout de conexao SSH nas OLTs |
-| SSH Keepalive | `30` | Intervalo de keepalive SSH |
-| Sinal Bom <= | `-27.00` | Limiar de sinal considerado bom (dBm) |
-| Sinal Aceitavel <= | `-30.00` | Limiar de sinal aceitavel (dBm) |
-| Token Telegram | — | Token do bot para alertas LOS/offline |
-| Chat ID Telegram | — | ID do chat que recebe os alertas |
-
----
-
-## Listagem de ONUs
-
-A pagina **ONUs / ONTs** consulta o banco MySQL via `api/index.php` e exibe:
-
-Cards de contagem clicaveis por categoria de sinal:
-
-| Card | Descricao |
-|---|---|
-| Nulo | Sem sinal (RX = 0 ou menor que -40 dBm) |
-| LOS / Offline | Perda de sinal ou ONU offline |
-| Desligada | ONU desconectada manualmente |
-| RX Bom | Sinal dentro da faixa ideal |
-| RX Limite | Sinal na zona marginal |
-| RX Ruim | Sinal abaixo do limiar aceitavel |
-
-- Filtros por OLT, porta PON e busca livre por SN / nome / IP
-- Paginacao configuravel (padrao: 30 registros/pagina)
-- Quando o banco nao esta configurado, exibe dados de demonstracao
-
----
-
-## Diagnostico de Sinal
-
-Analise local baseada no padrao **GPON ITU-T G.984**, sem internet:
-
-| Nivel | Faixa RX | Indicador |
-|---|---|---|
-| Excelente | -8 a -18 dBm | Verde |
-| Bom | -18 a -24 dBm | Azul |
-| Marginal | -24 a -27 dBm | Amarelo |
-| Critico | abaixo de -27 dBm | Vermelho |
-| LOS | abaixo de -40 dBm | Vermelho |
-
-O diagnostico calcula automaticamente:
-- **Link Budget** (TX menos RX em dB)
-- **Atenuacao esperada** (0,35 dB/km x distancia)
-- **Margem** disponivel no trecho
-- **Possiveis causas** e **recomendacoes** tecnicas ordenadas por probabilidade
-
----
-
-## Backup
-
-Acesse **Configuracoes** e clique em **Gerar Backup** (topo da pagina).
-
-- **Com backend PHP:** baixa JSON completo via `api/index.php?action=backup`
-- **Sem backend (modo dev):** exporta dados do localStorage localmente
-
----
-
-## API Backend PHP
-
-Todos os endpoints em `api/index.php` exigem sessao valida do MK-Auth (`$_SESSION['admin_login']`).
-Requisicoes sem sessao retornam `HTTP 401`.
-
-| Endpoint | Metodo | Descricao |
-|---|---|---|
-| `?action=test_db` | POST | Testa conexao MySQL e retorna versao do servidor |
-| `?action=list_onus` | GET | Lista todas as ONUs do banco `mk_auth` |
-| `?action=ping_host&ip=X.X.X.X` | GET | Faz ping no host e retorna latencia |
-| `?action=backup` | GET | Baixa backup JSON das configuracoes |
-
----
-
-## Dependencias
-
-| Pacote | Versao | Uso |
-|---|---|---|
-| `react` | ^19.2.0 | Interface |
-| `react-dom` | ^19.2.0 | Renderizacao |
-| `lucide-react` | ^0.555.0 | Icones |
-| `recharts` | ^3.5.0 | Graficos |
-| `vite` | ^6.2.0 | Build |
-| `typescript` | ~5.8.2 | Tipagem |
-
-Nenhuma dependencia de IA ou servicos externos.
-
----
-
-## Licenca
-
-Uso livre para provedores de internet utilizando MK-Auth.
+MIT © charllesvale

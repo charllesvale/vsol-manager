@@ -6,13 +6,16 @@ interface NavbarProps {
   setPage: (page: string) => void;
 }
 
+// Lê usuário injetado pelo index.php (MK-Auth)
+declare global { interface Window { VSOL_USER?: { name: string; initials: string } } }
+const mkUser = window.VSOL_USER ?? { name: 'Admin ISP', initials: 'MK' };
+
 export const Navbar: React.FC<NavbarProps> = ({ currentPage, setPage }) => {
   const menuItems = [
-    { id: 'dashboard',   label: 'Dashboard',          icon: LayoutDashboard },
-    { id: 'olts',        label: 'Gerenciar OLTs',     icon: Server },
-    { id: 'onus',        label: 'ONUs / ONTs',         icon: Signal },
+    { id: 'dashboard',   label: 'Dashboard',           icon: LayoutDashboard },
+    { id: 'olts',        label: 'Gerenciar OLTs',      icon: Server },
     { id: 'diagnostics', label: 'Diagnóstico de Sinal', icon: Activity },
-    { id: 'settings',    label: 'Configurações',       icon: Settings },
+    { id: 'settings',    label: 'Configurações',        icon: Settings },
   ];
 
   return (
@@ -40,13 +43,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, setPage }) => {
 
           <div className="flex items-center gap-3">
             <div className="hidden md:block text-right">
-              <p className="text-xs font-semibold text-slate-200">Admin ISP</p>
+              <p className="text-xs font-semibold text-slate-200">{mkUser.name}</p>
               <div className="flex items-center justify-end gap-1.5">
                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
                 <p className="text-[10px] text-slate-400">MK-Auth</p>
               </div>
             </div>
-            <div className="h-8 w-8 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-blue-400">MK</div>
+            <div className="h-8 w-8 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-blue-400">
+              {mkUser.initials}
+            </div>
           </div>
         </div>
       </div>
