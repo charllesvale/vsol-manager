@@ -1,12 +1,8 @@
 import React from 'react';
-import { LayoutDashboard, Server, Signal, Activity, Settings, Network } from 'lucide-react';
+import { LayoutDashboard, Server, Activity, Settings, Network, Map } from 'lucide-react';
 
-interface NavbarProps {
-  currentPage: string;
-  setPage: (page: string) => void;
-}
+interface NavbarProps { currentPage: string; setPage: (page: string) => void; }
 
-// Lê usuário injetado pelo index.php (MK-Auth)
 declare global { interface Window { VSOL_USER?: { name: string; initials: string } } }
 const mkUser = window.VSOL_USER ?? { name: 'Admin ISP', initials: 'MK' };
 
@@ -14,6 +10,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, setPage }) => {
   const menuItems = [
     { id: 'dashboard',   label: 'Dashboard',           icon: LayoutDashboard },
     { id: 'olts',        label: 'Gerenciar OLTs',      icon: Server },
+    { id: 'mapa',        label: 'Mapa da Rede',        icon: Map },
     { id: 'diagnostics', label: 'Diagnóstico de Sinal', icon: Activity },
     { id: 'settings',    label: 'Configurações',        icon: Settings },
   ];
@@ -55,7 +52,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, setPage }) => {
           </div>
         </div>
       </div>
-
       {/* Mobile */}
       <div className="md:hidden border-t border-slate-800 flex justify-around p-2">
         {menuItems.map(({ id, icon: Icon }) => (

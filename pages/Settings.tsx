@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Save, Database, CheckCircle, Info, Copy, FolderOpen,
-  Trash2, RotateCcw, Download, Loader2, XCircle, AlertTriangle, Bell
+  Trash2, RotateCcw, Download, Loader2, XCircle, AlertTriangle, Bell, Send, Map
 } from 'lucide-react';
 import { ConfigStorage, LogStorage, OltStorage } from '../services/storage';
-import { testDatabase, downloadBackup } from '../services/api';
+import { testDatabase, downloadBackup, testTelegram, sendTelegramAlert } from '../services/api';
 import { AppConfig, DEFAULT_CONFIG } from '../types';
 
 type TabId = 'install' | 'mkauth' | 'operacao' | 'logs';
@@ -40,6 +40,9 @@ export const Settings: React.FC = () => {
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [dbTest, setDbTest] = useState<{ ok: boolean; msg: string } | null>(null);
   const [dbTesting, setDbTesting] = useState(false);
+  const [tgTesting, setTgTesting] = useState(false);
+  const [tgResult,  setTgResult]  = useState<{ ok: boolean; msg: string } | null>(null);
+  const [tgSending, setTgSending] = useState(false);
 
   useEffect(() => { setLogs(LogStorage.getAll()); }, [activeTab]);
 
@@ -81,6 +84,34 @@ export const Settings: React.FC = () => {
       setDbTest({ ok: false, msg: 'Erro ao chamar API backend. Execute o addon via MK-Auth.' });
     }
     setDbTesting(false);
+  };
+
+  // ── Teste Telegram ───────────────────────────────────────────────────────────
+  const handleTestTelegram = async () => {
+    setTgTesting(true);
+    setTgResult(null);
+    try {
+      const res = await testTelegram(config.telegramToken, config.telegramChatId);
+      setTgResult({ ok: res.ok, msg: res.message });
+      LogStorage.add(res.ok ? 'success' : 'error', `Teste Telegram: ${res.message}`);
+      setLogs(LogStorage.getAll());
+    } catch (e: any) {
+      setTgResult({ ok: false, msg: 'Erro: ' + e.message });
+    }
+    setTgTesting(false);
+  };
+
+  const handleSendAlert = async () => {
+    setTgSending(true);
+    try {
+      const res = await sendTelegramAlert();
+      showToast(res.ok ? 'Alerta enviado!' : res.message, res.ok ? 'success' : 'error');
+      LogStorage.add(res.ok ? 'success' : 'error', `Alerta Telegram: ${res.message}`);
+      setLogs(LogStorage.getAll());
+    } catch (e: any) {
+      showToast('Erro ao enviar alerta.', 'error');
+    }
+    setTgSending(false);
   };
 
   // ── Backup ────────────────────────────────────────────────────────────────
@@ -388,6 +419,25 @@ cp addon_vsol.js /opt/mk-auth/admin/addons/`;
                       className="font-mono" />
                   </Field>
                 </div>
+
+                {/* Botões Telegram */}
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <button onClick={handleTestTelegram} disabled={tgTesting || config.telegramAlerta === 'Desativado'}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
+                    {tgTesting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    {tgTesting ? 'Testando...' : 'Testar Conexão Telegram'}
+                  </button>
+                  <button onClick={handleSendAlert} disabled={tgSending || config.telegramAlerta === 'Desativado'}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
+                    {tgSending ? <Loader2 size={16} className="animate-spin" /> : <Bell size={16} />}
+                    {tgSending ? 'Enviando...' : 'Enviar Alerta Agora'}
+                  </button>
+                </div>
+                {tgResult && (
+                  <div className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium ${tgResult.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                    {tgResult.ok ? <CheckCircle size={16} /> : <XCircle size={16} />} {tgResult.msg}
+                  </div>
+                )}
               </div>
 
               <button onClick={handleSave} disabled={saving}
