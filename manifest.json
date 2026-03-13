@@ -1,7 +1,7 @@
 {
   "name": "VSOL Manager Pro",
   "description": "Gerenciador de OLT VSOL e Provisionamento",
-  "version": "1.0",
+  "version": "2.0",
   "author": "Admin",
   "target": "_self",
   "icon": "network"

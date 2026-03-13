@@ -99,3 +99,78 @@ export async function geocodeAddress(address: string, apiKey?: string): Promise<
 export async function getMapsData(): Promise<MapsOltsResult> {
   return apiFetch<MapsOltsResult>('maps_olts');
 }
+
+// ── OLT CRUD (banco de dados via API) ─────────────────────────────────────────
+
+export interface OltDbRecord {
+  id: number;
+  nome: string;
+  ip: string;
+  usuario: string;
+  porta_ssh: number;
+  modelo: string;
+  ativo: number;
+  endereco: string;
+  lat: number | null;
+  lng: number | null;
+  created_at: string;
+}
+
+export interface OltListResult { ok: boolean; olts: OltDbRecord[]; message?: string; }
+export interface OltSaveResult { ok: boolean; id?: number; message: string; }
+
+export async function listOltsDb(): Promise<OltListResult> {
+  return apiFetch<OltListResult>('list_olts');
+}
+
+export async function addOltDb(data: {
+  nome: string; ip: string; usuario: string; senha: string;
+  porta_ssh: number; modelo: string; endereco?: string; lat?: number|null; lng?: number|null;
+}): Promise<OltSaveResult> {
+  return apiFetch<OltSaveResult>('add_olt', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data),
+  });
+}
+
+export async function updateOltDb(data: {
+  id: number; nome: string; ip: string; usuario: string; senha?: string;
+  porta_ssh: number; modelo: string; ativo: number; endereco?: string; lat?: number|null; lng?: number|null;
+}): Promise<OltSaveResult> {
+  return apiFetch<OltSaveResult>('update_olt', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data),
+  });
+}
+
+export async function deleteOltDb(id: number): Promise<OltSaveResult> {
+  return apiFetch<OltSaveResult>('delete_olt', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id }),
+  });
+}
+
+// ── SSH Query OLT ─────────────────────────────────────────────────────────────
+
+export interface QueryOltResult {
+  ok: boolean; message: string; onus?: any[]; total?: number; online?: number;
+}
+
+export async function queryOlt(id: number): Promise<QueryOltResult> {
+  return apiFetch<QueryOltResult>('query_olt', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id }),
+  });
+}
+
+// ── CTOs ──────────────────────────────────────────────────────────────────────
+
+export async function listCtos() { return apiFetch<any>('list_ctos'); }
+export async function addCto(data: any) { return apiFetch<any>('add_cto', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }); }
+export async function updateCto(data: any) { return apiFetch<any>('update_cto', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }); }
+export async function deleteCto(id: number) { return apiFetch<any>('delete_cto', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id}) }); }
+export async function listCtoClients(id_cto: number) { return apiFetch<any>('list_cto_clients', undefined, {id_cto: String(id_cto)}); }
+export async function assignClient(data: any) { return apiFetch<any>('assign_client', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }); }
+export async function removeClient(data: any) { return apiFetch<any>('remove_client', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }); }
+export async function importKml(file: File) {
+  const form = new FormData(); form.append('arquivo', file);
+  return apiFetch<any>('import_kml', { method: 'POST', body: form });
+}
+export async function getAiAnalise() { return apiFetch<any>('ai_analise'); }
+export async function getMapsFull() { return apiFetch<any>('maps_full'); }

@@ -5,15 +5,19 @@ import { Diagnostics } from './pages/Diagnostics';
 import { Settings } from './pages/Settings';
 import { OLTManager } from './pages/OLTManager';
 import { MapView } from './pages/MapView';
+import { CTOPage } from './pages/CTOPage';
+import { AIPage } from './pages/AIPage';
 
-type PageId = 'dashboard' | 'olts' | 'diagnostics' | 'mapa' | 'settings';
+type PageId = 'dashboard' | 'olts' | 'ctos' | 'ai' | 'diagnostics' | 'mapa' | 'settings';
 
 const PAGE_META: Record<PageId, { title: string; sub: string }> = {
-  dashboard:   { title: 'Visão Geral',           sub: 'Monitoramento em tempo real da planta óptica.' },
-  olts:        { title: 'Gerenciamento de OLTs', sub: 'Cadastre e gerencie seus concentradores VSOL, Huawei, ZTE e Intelbras.' },
-  diagnostics: { title: 'Diagnóstico de Sinal',  sub: 'Análise técnica local de sinal óptico GPON/EPON. Funciona 100% offline.' },
-  mapa:        { title: 'Mapa da Rede',           sub: 'Visualize a localização de suas OLTs e clientes no mapa.' },
-  settings:    { title: 'Sistema & Instalação',  sub: 'Configure o addon, banco de dados e visualize logs de atividade.' },
+  dashboard:   { title: 'Visão Geral',              sub: 'Monitoramento em tempo real da planta óptica.' },
+  olts:        { title: 'Gerenciamento de OLTs',          sub: 'Cadastre e gerencie seus concentradores VSOL, Huawei, ZTE e Intelbras.' },
+  ctos:        { title: 'Rede FTTH & CTOs',               sub: 'Gerencie CTOs, importe KMZ/KML e associe clientes.' },
+  ai:          { title: 'Análise Inteligente',       sub: 'Detecção automática de anomalias e causa raiz.' },
+  diagnostics: { title: 'Diagnóstico de Sinal',     sub: 'Análise técnica local de sinal óptico GPON/EPON. Funciona 100% offline.' },
+  mapa:        { title: 'Mapa da Rede',                   sub: 'Visualize a localização de suas OLTs e clientes no mapa.' },
+  settings:    { title: 'Sistema & Instalação', sub: 'Configure o addon, banco de dados e visualize logs de atividade.' },
 };
 
 const App: React.FC = () => {
@@ -24,6 +28,8 @@ const App: React.FC = () => {
     switch (page) {
       case 'dashboard':   return <Dashboard />;
       case 'olts':        return <OLTManager />;
+      case 'ctos':        return <CTOPage />;
+      case 'ai':          return <AIPage />;
       case 'diagnostics': return <Diagnostics />;
       case 'mapa':        return <MapView />;
       case 'settings':    return <Settings />;

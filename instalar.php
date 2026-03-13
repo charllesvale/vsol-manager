@@ -39,7 +39,7 @@ $mysqli->query("CREATE TABLE IF NOT EXISTS `vsol_config` (
     `horas_check_onu` int(11)       NOT NULL DEFAULT 12,
     `qtd_check_onu`   int(11)       NOT NULL DEFAULT 50,
     `ssh_timeout`     int(11)       NOT NULL DEFAULT 10,
-    `ssh_kepallive`   int(11)       NOT NULL DEFAULT 30,
+    `ssh_keepalive`   int(11)       NOT NULL DEFAULT 30,
     `ultimo_backup`   varchar(200)  DEFAULT '',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
@@ -83,6 +83,59 @@ $mysqli->query("CREATE TABLE IF NOT EXISTS `vsol_olts` (
 @$mysqli->query("ALTER TABLE `vsol_olts` ADD COLUMN `lat` decimal(10,7) DEFAULT NULL AFTER `endereco`");
 @$mysqli->query("ALTER TABLE `vsol_olts` ADD COLUMN `lng` decimal(10,7) DEFAULT NULL AFTER `lat`");
 echo "OK - Tabela vsol_olts criada/verificada.\n";
+
+
+// Cria tabela de CTOs
+$mysqli->query("CREATE TABLE IF NOT EXISTS `vsol_ctos` (
+    `id`         int(11)      NOT NULL AUTO_INCREMENT,
+    `nome`       varchar(100) NOT NULL DEFAULT '',
+    `descricao`  text         DEFAULT '',
+    `capacidade` int(11)      NOT NULL DEFAULT 16,
+    `tipo`       varchar(30)  NOT NULL DEFAULT 'CTO',
+    `id_olt`     int(11)      DEFAULT NULL,
+    `id_pon`     int(11)      DEFAULT NULL,
+    `endereco`   varchar(255) DEFAULT '',
+    `lat`        decimal(10,7) DEFAULT NULL,
+    `lng`        decimal(10,7) DEFAULT NULL,
+    `ativo`      tinyint(1)   NOT NULL DEFAULT 1,
+    `created_at` datetime     DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+echo "OK - Tabela vsol_ctos criada/verificada.
+";
+
+// Cria tabela de clientes por CTO
+$mysqli->query("CREATE TABLE IF NOT EXISTS `vsol_cto_clientes` (
+    `id`         int(11)      NOT NULL AUTO_INCREMENT,
+    `id_cto`     int(11)      NOT NULL,
+    `login`      varchar(100) NOT NULL DEFAULT '',
+    `porta`      int(11)      DEFAULT NULL,
+    `sn_onu`     varchar(50)  DEFAULT '',
+    `created_at` datetime     DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_cto_login` (`id_cto`, `login`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+echo "OK - Tabela vsol_cto_clientes criada/verificada.
+";
+
+// Cria tabela de historico de ONUs
+$mysqli->query("CREATE TABLE IF NOT EXISTS `vsol_onus_historico` (
+    `id`            int(11)    NOT NULL AUTO_INCREMENT,
+    `id_olt`        int(11)    NOT NULL,
+    `id_pon`        int(11)    NOT NULL DEFAULT 0,
+    `onu_index`     int(11)    NOT NULL DEFAULT 0,
+    `sn`            varchar(50) DEFAULT '',
+    `status_onu`    varchar(20) DEFAULT 'offline',
+    `rx`            float      DEFAULT 0,
+    `tx`            float      DEFAULT 0,
+    `registrado_em` datetime   DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_olt_pon` (`id_olt`, `id_pon`),
+    KEY `idx_sn` (`sn`),
+    KEY `idx_data` (`registrado_em`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+echo "OK - Tabela vsol_onus_historico criada/verificada.
+";
 
 $mysqli->close();
 echo "OK - Instalação do banco de dados concluída.\n";

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Server, Activity, Settings, Network, Map } from 'lucide-react';
+import { LayoutDashboard, Server, Activity, Settings, Network, Map, Brain } from 'lucide-react';
 
 interface NavbarProps { currentPage: string; setPage: (page: string) => void; }
 
@@ -10,9 +10,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, setPage }) => {
   const menuItems = [
     { id: 'dashboard',   label: 'Dashboard',           icon: LayoutDashboard },
     { id: 'olts',        label: 'Gerenciar OLTs',      icon: Server },
+    { id: 'ctos',        label: 'Rede FTTH',           icon: Network },
+    { id: 'ai',          label: 'IA & Análise',  icon: Brain },
     { id: 'mapa',        label: 'Mapa da Rede',        icon: Map },
     { id: 'diagnostics', label: 'Diagnóstico de Sinal', icon: Activity },
-    { id: 'settings',    label: 'Configurações',        icon: Settings },
+    { id: 'settings',    label: 'Configurações',   icon: Settings },
   ];
 
   return (

@@ -1,3 +1,4 @@
+import { addOltDb, updateOltDb, deleteOltDb, listOltsDb, queryOlt } from '../services/api';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Server, Plus, Trash2, Edit2, X, Save, Search, Wifi, WifiOff,
@@ -62,6 +63,19 @@ export const OLTManager: React.FC = () => {
   useEffect(() => {
     const handleClickOutside = () => setActiveMenuId(null);
     document.addEventListener('click', handleClickOutside);
+  const handleQueryOlt = async (id: number) => {
+    try {
+      const result = await queryOlt(id);
+      if (result.ok) {
+        alert(`${result.message}\nTotal: ${result.total ?? 0} | Online: ${result.online ?? 0}`);
+      } else {
+        alert(`Erro ao consultar OLT: ${result.message}`);
+      }
+    } catch (e: any) {
+      alert(`Erro SSH: ${e.message}`);
+    }
+  };
+
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
@@ -206,6 +220,13 @@ export const OLTManager: React.FC = () => {
 
               <button onClick={() => handleDelete(olt.id)} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 font-medium">
                 <Trash2 size={16} /> Remover OLT
+              </button>
+              <button
+                onClick={() => handleQueryOlt(olt.id)}
+                className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
+                title="Consultar via SSH"
+              >
+                <span className="text-xs font-medium">SSH</span>
               </button>
             </div>
           </div>
@@ -358,10 +379,15 @@ export const OLTManager: React.FC = () => {
                       onChange={e => setFormData({...formData, model: e.target.value})}
                       className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                     >
-                      <optgroup label="VSOL GPON">
+                                            <optgroup label="VSOL GPON">
                         <option value="V1600G1">V1600G1 (8 PON)</option>
                         <option value="V1600G2">V1600G2 (16 PON)</option>
                         <option value="V1600G4">V1600G4 (4 PON)</option>
+                        <option value="V1600G5">V1600G5 (8 PON)</option>
+                        <option value="V1600G8">V1600G8 (8 PON)</option>
+                        <option value="V1800G">V1800G (16 PON)</option>
+                        <option value="V2802G">V2802G (2 PON)</option>
+                        <option value="V2801RH">V2801RH (1 PON)</option>
                       </optgroup>
                       <optgroup label="VSOL EPON">
                         <option value="V1600D4">V1600D4 (4 EPON)</option>

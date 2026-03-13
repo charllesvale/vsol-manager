@@ -8,7 +8,7 @@ if (file_exists(dirname(__FILE__) . '/addons.class.php')) {
 } elseif (file_exists('/opt/mk-auth/include/addons.inc.hhvm')) {
     include('/opt/mk-auth/include/addons.inc.hhvm');
 } else {
-    die('Erro: addons.class.php não encontrado.');
+    die('Erro: addons.class.php nao encontrado.');
 }
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -21,10 +21,15 @@ if (!isset($_SESSION['MKA_Logado'])) {
     exit('Acesso negado.');
 }
 
-$usuario = isset($_GET['u']) ? htmlspecialchars($_GET['u']) : 
-    (isset($_SESSION['MKA_Usuario']) ? $_SESSION['MKA_Usuario'] : 'Admin');
-$iniciais = isset($_GET['i']) ? htmlspecialchars($_GET['i']) :
-    strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $usuario), 0, 2) ?: 'MK');
+$usuario  = isset($_GET['u']) ? htmlspecialchars($_GET['u'])
+    : (isset($_SESSION['MKA_Usuario']) ? $_SESSION['MKA_Usuario'] : 'Admin');
+$iniciais = isset($_GET['i']) ? htmlspecialchars($_GET['i'])
+    : strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $usuario), 0, 2) ?: 'MK');
+
+// Cache busting: usa timestamp do arquivo JS compilado
+$jsFile  = __DIR__ . '/assets/index.js';
+$cssFile = __DIR__ . '/assets/index.css';
+$v = file_exists($jsFile) ? filemtime($jsFile) : time();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -32,14 +37,13 @@ $iniciais = isset($_GET['i']) ? htmlspecialchars($_GET['i']) :
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VSOL Manager Pro</title>
-  <!-- SEM CSS do MK-Auth aqui — isolado no iframe -->
-  <link rel="stylesheet" href="./assets/index.css" />
+  <link rel="stylesheet" href="./assets/index.css?v=<?= $v ?>" />
 </head>
 <body>
   <div id="root"></div>
   <script>
     window.VSOL_USER = <?= json_encode(['name' => $usuario, 'initials' => $iniciais]) ?>;
   </script>
-  <script type="module" src="./assets/index.js"></script>
+  <script type="module" src="./assets/index.js?v=<?= $v ?>"></script>
 </body>
 </html>

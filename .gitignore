@@ -1,5 +1,6 @@
-# Dependências
+# Dependencias
 node_modules/
+vendor/
 
 # Build gerado
 dist/
@@ -22,3 +23,14 @@ npm-debug.log*
 
 # Backup gerado pelo instalar.sh
 *.zip
+
+# Backups temporarios
+*.bak
+*.bak2
+*.bak3
+
+# Symlink do MK-Auth (gerado na instalacao)
+addons.class.php
+
+# Config local gerada
+vsol_config.json

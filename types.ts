@@ -100,8 +100,8 @@ export const DEFAULT_CONFIG: AppConfig = {
 export function getSignalLevel(rx: number): SignalLevel {
   if (rx === 0 || rx < -40) return 'nulo';
   if (rx < -35) return 'los';
-  if (rx <= -27) return 'ruim';   // abaixo do sinalBom padrão
-  if (rx <= -24) return 'limite';
+  if (rx <= -30) return 'ruim';
+  if (rx <= -27) return 'limite';
   return 'bom';
 }
 
